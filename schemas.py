@@ -8,7 +8,11 @@ class Customer(BaseModel):
 class Account(BaseModel):
     customer_id: int
     account_number: str
+    
+
+class AccountExtend(Account):
     balance: float
+
 
 class Card(BaseModel):
     account_id: int

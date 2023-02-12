@@ -2,7 +2,7 @@ from fastapi import FastAPI,HTTPException
 import sqlite3
 from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
-from schemas import Account,Card, Customer
+from schemas import Account, AccountExtend,Card, Customer
 from db import create_tables
 
 create_tables()
@@ -49,7 +49,7 @@ async def create_account(account: Account):
     customer = cursor.fetchone()
     if not customer:
         raise HTTPException(status_code=404, detail="The customer ID does not exist.")
-    cursor.execute(f"INSERT INTO accounts (customer_id, account_number, balance) VALUES ('{account.customer_id}', '{account.account_number}', '{account.balance}')")
+    cursor.execute(f"INSERT INTO accounts (customer_id, account_number, balance) VALUES ('{account.customer_id}', '{account.account_number}', '0.0')")
     conn.commit()
     return {"message": "Account created"}
 
@@ -96,6 +96,43 @@ async def withdraw_from_account(account_id: int, amount: float):
     else:
         raise HTTPException(status_code=404, detail="Account not found")
 
+@app.get("/customers")
+def get_customers():
+    cursor.execute("SELECT * FROM customers")
+    customers = cursor.fetchall()
+    
+    return {"customers": customers}
+
+@app.get("/customers/{customer_id}/accounts")
+def get_customer_accounts(customer_id: int):
+    cursor.execute(f"SELECT * FROM customers WHERE customer_id={customer_id}")
+    customer = cursor.fetchone()
+    if not customer:
+        raise HTTPException(status_code=404, detail=f"Customer with id {customer_id} not found")
+    cursor.execute(f"SELECT * FROM accounts WHERE customer_id={customer_id}")
+    accounts = cursor.fetchall()
+    return {"accounts": accounts}
+
+@app.get("/customers/{customer_id}/cards")
+def get_customer_cards(customer_id: int):
+    
+    cursor.execute(f"SELECT * FROM customers WHERE customer_id={customer_id}")
+    customer = cursor.fetchone()
+    if not customer:
+        raise HTTPException(status_code=404, detail=f"Customer with id {customer_id} not found")
+
+    cursor.execute(f"SELECT id FROM accounts WHERE customer_id={customer_id}")
+    accounts = cursor.fetchall()
+    if not accounts:
+        raise HTTPException(status_code=404, detail=f"No accounts hence no cards found for customer with id {customer_id}")
+
+    accounts = [a[0] for a in accounts]
+    account_ids = ",".join(str(a) for a in accounts)
+    print(account_ids)
+    cursor.execute(f"SELECT * FROM cards WHERE account_id IN ({account_ids})")
+    cards = cursor.fetchall()
+    return {"cards": cards}
+    
 
 @app.get("/")
 def home():
